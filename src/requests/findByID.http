@@ -1,0 +1,2 @@
+GET http://localhost:3000/expenses/464da4af-3441-48c6-929d-55a29420214d
+Accept: application/json

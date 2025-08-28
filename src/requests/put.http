@@ -1,0 +1,8 @@
+PUT http://localhost:3000/expenses/PutIdApi/16
+Accept: application/json
+Content-Type: application/json
+
+{
+  "description": "Dinner",
+  "amount": 450
+}

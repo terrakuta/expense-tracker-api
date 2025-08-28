@@ -1,0 +1,8 @@
+POST http://localhost:3000/expenses
+Content-Type: application/json
+Accept: application/json
+
+{
+   "description": "Мой первый пост запрос",
+   "amount": 100
+}
