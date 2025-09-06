@@ -5,17 +5,19 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { getTypeOrmConfig } from './config/typeorm.config';
-import { UsersEntityModule } from './users-entity/users-entity.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({
-    isGlobal: true,
-    }),
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: getTypeOrmConfig,
       inject: [ConfigService],
-  }), ExpensesModule, UsersEntityModule],
+    }),
+    ExpensesModule,
+    AuthModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

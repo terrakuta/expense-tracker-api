@@ -2,19 +2,36 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Between, Repository } from 'typeorm';
 import { ExpensesEntity } from './entities/expenses.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateExpensesDto } from '../dto/expenses.dto';
+import { CreateExpensesDto } from './dto/expenses.dto';
+import { User } from '../auth/entities/users.entity';
 
 @Injectable()
 export class ExpensesService {
-  constructor(@InjectRepository(ExpensesEntity) private readonly expensesRepository: Repository<ExpensesEntity>) {
+  constructor(
+    @InjectRepository(ExpensesEntity) private readonly expensesRepository: Repository<ExpensesEntity>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+  ) {}
+
+  async findAll(userId: string, page = 1, limit = 10): Promise<ExpensesEntity[]> {
+    const skip = (page - 1) * limit;
+
+    return this.expensesRepository.find({
+      where: { user: { id: userId } },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
   }
 
-  async findAll(): Promise<ExpensesEntity[]> {
-    return this.expensesRepository.find();
-  }
+  async create(dto: CreateExpensesDto, userId: string): Promise<ExpensesEntity> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
 
-  async create(dto: CreateExpensesDto): Promise<ExpensesEntity> {
-    const expense = this.expensesRepository.create(dto);
+    const expense = this.expensesRepository.create({
+      ...dto,
+      user,
+    });
     return this.expensesRepository.save(expense);
   }
 
@@ -40,27 +57,29 @@ export class ExpensesService {
     return true;
   }
 
-  async getSummary(): Promise<{ total: number }> {
-    const expenses = await this.expensesRepository.find();
+  async getSummary(userId: string): Promise<{ total: number }> {
+    const expenses = await this.expensesRepository.find({where: { user: { id: userId } }});
     const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     return { total };
   }
 
-  async getMonthlySummary(month: number): Promise<ExpensesEntity[]> {
-    const now = new Date();
-    const year = now.getFullYear();
-
-    const startDate = new Date(year, month - 1, 1, 0, 0, 0); // month -1 = месяца это массив, где 0 элемент это январь
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  async getMonthlySummary(userId: string, start: string, end: string, page = 1, limit = 10): Promise<ExpensesEntity[]> {
+    const skip = (page - 1) * limit;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
 
     const expenses = await this.expensesRepository.find({
       where: {
+        user: { id: userId },
         createdAt: Between(startDate, endDate),
       },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
 
     if (!expenses || expenses.length === 0) {
-      throw new Error('Записи не найдены');
+      throw new NotFoundException('Записи не найдены');
     }
     return expenses;
   }

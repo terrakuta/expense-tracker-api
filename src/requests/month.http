@@ -1,2 +1,0 @@
-GET http://localhost:3000/expenses/month/9
-Accept: application/json
