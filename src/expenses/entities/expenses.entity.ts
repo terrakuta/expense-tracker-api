@@ -1,8 +1,9 @@
 import { Column, CreateDateColumn, Entity, Generated, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../../auth/entities/users.entity';
+import { Category } from './category.entity';
 
 @Entity()
-export class ExpensesEntity {
+export class Expenses {
   @PrimaryColumn()
   @Generated('uuid')
   id: string;
@@ -17,11 +18,11 @@ export class ExpensesEntity {
   })
   amount: number;
 
-  @Column({
-    type: 'date',
-    nullable: true,
-  })
-  expenseDate: Date;
+  @Column({ type: 'enum', enum: ['income', 'expense'] })
+  type: 'income' | 'expense';
+
+  @Column('decimal', { default: 0 })
+  balanceAfter: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -30,4 +31,7 @@ export class ExpensesEntity {
 
   @ManyToOne(() => User, { nullable: false })
   user: User;
+
+  @ManyToOne(() => Category, category => category.expenses, { nullable: true })
+  category?: Category | null;
 }

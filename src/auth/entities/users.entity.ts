@@ -1,5 +1,4 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { Account } from './accounts.entity';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -15,7 +14,6 @@ export class User {
   @Column()
   password: string;
 
-  @OneToOne(() => Account, account => account.user)
-  @JoinColumn()
-  account: Account;
+  @Column({ nullable: true })
+  avatarPath: string;
 }

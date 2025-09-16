@@ -1,14 +1,18 @@
-import { IsNotEmpty, IsNumber, IsPositive, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateExpensesDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Description should be a string' })
+  @IsNotEmpty({ message: 'Description is required' })
   description: string;
 
-  @IsNumber({}, { message: 'Сумма должна быть числом' })
-  @IsNotEmpty({ message: 'Сумма не может быть пустой' })
-  @IsPositive({ message: 'Сумма должна быть положительным числом' })
-  @Min(0.01, { message: 'Сумма должна быть не менее 0.01' })
-  @Max(1000000, { message: 'Сумма должна быть не больше 1000000' })
+  @IsNumber({}, { message: 'Description should be a number' })
+  @IsNotEmpty({ message: 'Description is required' })
   amount: number;
+
+  @IsEnum(['income', 'expense'])
+  type: 'income' | 'expense';
+
+  @IsUUID()
+  @IsOptional()
+  categoryId: string;
 }

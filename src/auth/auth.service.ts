@@ -1,17 +1,12 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { User } from './entities/users.entity';
-import { Account } from './entities/accounts.entity';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { hash, verify } from 'argon2';
-import type { JwtPayload } from './interfaces/jwt.interface';
-import type { Response } from 'express';
-import type { Request } from 'express';
-import { isDev } from '../utils/is-dev.util';
+import { verify } from 'argon2';
+import type { JwtPayload } from '../common/interfaces/jwt.interface';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
@@ -21,12 +16,9 @@ export class AuthService {
   private readonly COOKIE_DOMAIN: string;
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(Account)
-    private readonly accountsRepo: Repository<Account>,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
   ) {
     this.JWT_SECRET = configService.getOrThrow<string>('JWT_SECRET');
     this.JWT_ACCESS_TOKEN_TTL = configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL');
@@ -45,103 +37,63 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async register(res: Response, dto: RegisterDto) {
-    const { email, password, username } = dto;
-
-    const existUser = await this.userRepo.findOne({
-      where: { email },
-    });
+  async register(dto: RegisterDto) {
+    const existUser = await this.usersService.findByEmail(dto.email);
 
     if (existUser) {
       throw new ConflictException('User already exists');
     }
-    const user = await this.userRepo.create({
-      email,
-      password: await hash(password),
-      username,
-    });
-    await this.userRepo.save(user);
+    const user = await this.usersService.createBy(dto);
 
-    const account = this.accountsRepo.create({
-      provider: 'local',
-      providerId: user.id,
-      user: user,
-    });
-    await this.accountsRepo.save(account);
-
-    user.account = account;
-
-    return this.auth(res, user.id);
+    return this.generateTokenResponse(user);
   }
 
-  async login(res: Response, dto: LoginDto) {
-    const { username, password } = dto;
-
-    const user = await this.userRepo.findOne({
-      where: { username },
-      relations: ['account'],
-      select: ['id', 'username', 'password'],
-    });
+  async login(dto: LoginDto) {
+    const user = await this.usersService.findByUsername(dto.username);
 
     if (!user) {
-      throw new NotFoundException('User does not exists');
+      throw new UnauthorizedException('Invalid credentials');
     }
-    const isValidPassword = await verify(user.password, password);
+    const isValidPassword = await verify(user.password, dto.password);
 
     if (!isValidPassword) {
-      throw new NotFoundException('User does not exists');
+      throw new UnauthorizedException('Invalid credentials');
     }
-    return this.auth(res, user.id);
+    return this.generateTokenResponse(user);
   }
 
-  private auth(res: Response, id: string) {
-    const { accessToken, refreshToken } = this.generateTokens(id);
-    this.setCookie(res, refreshToken, new Date(Date.now() + 1000 * 60 * 60 * 24 * 30));
-    return { accessToken };
-  }
-
-  async logout(res: Response) {
-    this.setCookie(res, 'refreshToken', new Date(0));
-    return { message: 'Logged out' };
+  private generateTokenResponse(user: User) {
+    const { accessToken, refreshToken } = this.generateTokens(user.id);
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatarPath,
+      },
+    };
   }
 
   async validate(id: string) {
-    const user = await this.userRepo.findOne({
-      where: { id },
-      relations: ['account'],
-    });
+    const user = await this.usersService.findById(id);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
     return user;
   }
 
-  private setCookie(res: Response, value: string, expires: Date) {
-    res.cookie('refreshToken', value, {
-      httpOnly: true,
-      expires,
-      secure: !isDev(this.configService),
-      sameSite: !isDev(this.configService) ? 'none' : 'lax',
-      domain: this.COOKIE_DOMAIN,
-    });
-  }
-
-  async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies['refreshToken'];
+  async refresh(refreshToken: string) {
     if (!refreshToken) {
       throw new UnauthorizedException('Invalid token');
     }
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    if (payload) {
-      const user = await this.userRepo.findOne({
-        where: { id: payload.id },
-        select: ['id'],
-      });
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-      return this.auth(res, user.id);
+    const user = await this.usersService.findById(payload.id);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
+    return this.generateTokenResponse(user);
   }
 }
