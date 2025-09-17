@@ -16,7 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { AuthGuard } from '@nestjs/passport';
 import type { AuthRequest } from '../common/interfaces/auth-request.interface';
 
-@UseGuards(AuthGuard('jwt'))
+
 @UsePipes(new ValidationPipe({ forbidNonWhitelisted: true, whitelist: true, transform: true}))
 @Controller('auth')
 export class AuthController {
@@ -34,18 +34,19 @@ export class AuthController {
     return await this.authService.login(dto);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Body('refreshToken') refreshToken: string) {
     return await this.authService.refresh(refreshToken);
   }
-
+  @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout() {
     return { message: 'Logged out' };
   }
-
+  @UseGuards(AuthGuard('jwt'))
   @Get('@me')
   @HttpCode(HttpStatus.OK)
   async CurrentUser(@Req() req: AuthRequest) {
