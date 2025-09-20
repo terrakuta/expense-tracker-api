@@ -26,10 +26,10 @@
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
 ## Roadmap.sh
-
 https://roadmap.sh/projects/expense-tracker-api
 
-## Project setup
+
+## Project setups
 
 ```bash
 $ npm install
