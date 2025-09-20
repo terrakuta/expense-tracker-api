@@ -24,7 +24,9 @@
 ## Description
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-Roadmap.sh link - https://roadmap.sh/projects/expense-tracker-api.
+
+## Roadmap.sh
+https://roadmap.sh/projects/expense-tracker-api
 
 ## Project setup
 
