@@ -28,8 +28,7 @@
 ## Roadmap.sh
 https://roadmap.sh/projects/expense-tracker-api
 
-
-## Project setups
+## Project setup
 
 ```bash
 $ npm install
